@@ -1,0 +1,1533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daggerheart Character Sheet</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>Character Sheet</h1>
+    <div class="header-buttons">
+      <button id="itemsBtn" onclick="openItemsModal()">Items</button>
+      <button id="detailsBtn" onclick="openDetailsModal()">Codex</button>
+      <button id="loadBtn" onclick="document.getElementById('fileInput').click()">Load</button>
+      <button id="downloadBtn" onclick="downloadCharacter()">Download</button>
+      <button id="saveBtn" onclick="saveCharacter()">Save</button>
+    </div>
+    <input type="file" id="fileInput" accept=".json" style="display:none" onchange="loadCharacter(event)">
+  </div>
+
+  <div class="character-bar">
+    <span class="char-label">Character:</span>
+    <select id="characterSelect" onchange="selectCharacter(this.value)">
+      {% for char in characters %}
+      <option value="{{ char.id }}"{% if char.id == active_id %} selected{% endif %}>{{ char.name }} - Level {{ char.level }} {{ char.class_name or 'Unclassed' }}</option>
+      {% endfor %}
+    </select>
+    <button class="char-btn char-create" onclick="createCharacter()">+ New</button>
+    <button class="char-btn char-delete-btn" onclick="deleteCharacter()">Delete</button>
+  </div>
+
+  <form id="charForm">
+    <div class="section">
+      <div class="field-row">
+        <div class="field"><label>Class</label><select name="class_name" id="classSelect"><option value="">-- Select --</option>{% for c in class_data.classes %}<option value="{{ c }}"{% if data.class_name == c %} selected{% endif %}>{{ c }}</option>{% endfor %}</select></div>
+        <div class="field"><label>Name</label><input type="text" name="name" value="{{ data.name }}"></div>
+        <div class="field"><label>Pronouns</label><input type="text" name="pronouns" value="{{ data.pronouns }}"></div>
+        <div class="field"><label>Ancestry</label><select name="ancestry"><option value="">-- Select --</option>{% for a in class_data.ancestries %}<option value="{{ a }}"{% if data.ancestry == a %} selected{% endif %}>{{ a }}</option>{% endfor %}</select></div>
+        <div class="field"><label>Community</label><select name="community"><option value="">-- Select --</option>{% for c in class_data.communities %}<option value="{{ c }}"{% if data.community == c %} selected{% endif %}>{{ c }}</option>{% endfor %}</select></div>
+        <div class="field"><label>Subclass</label><select name="subclass" id="subclassSelect"><option value="">-- Select --</option></select></div>
+        <div class="field field-short"><label>Level</label><input type="number" name="level" value="{{ data.level }}"></div>
+        <div class="field field-short"><label>Tier</label><input type="number" id="tierField" value="{{ data.level | tier_from_level }}" readonly></div>
+      </div>
+      <div class="field-row" id="domainsRow"{% if not data.class_name %} style="display:none"{% endif %}>
+        <div class="field domains-field"><label>Domains</label><div class="domain-chips" id="domainChips"></div></div>
+      </div>
+    </div>
+
+    <div class="section two-col">
+      <div class="col-left">
+        <div class="field"><label>Evasion</label><input type="number" name="evasion" value="{{ data.evasion }}" id="evasion"></div>
+        <div class="field field-short"><label>Armor</label><input type="number" name="armor" id="armor" value="{{ data.armor }}" min="0" max="12"></div>
+        <div class="field chk-group" data-field="marked_armor" data-parent="armor">
+          <label>Marked Armor</label>
+          <div class="chk-boxes" id="chk-marked_armor">
+            {% for i in range(data.marked_armor|length) %}
+            <input type="checkbox" data-idx="{{ i }}"{% if data.marked_armor[i] %} checked{% endif %}>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      <div class="col-right">
+        <div class="attr-row">
+          <div class="field chk-field"><label>Agility</label><input type="number" name="agility" value="{{ data.agility }}"><input type="checkbox" name="agility_chk" {% if data.agility_chk %}checked{% endif %}></div>
+          <div class="field chk-field"><label>Strength</label><input type="number" name="strength" value="{{ data.strength }}"><input type="checkbox" name="strength_chk" {% if data.strength_chk %}checked{% endif %}></div>
+          <div class="field chk-field"><label>Finesse</label><input type="number" name="finesse" value="{{ data.finesse }}"><input type="checkbox" name="finesse_chk" {% if data.finesse_chk %}checked{% endif %}></div>
+          <div class="field chk-field"><label>Instinct</label><input type="number" name="instinct" value="{{ data.instinct }}"><input type="checkbox" name="instinct_chk" {% if data.instinct_chk %}checked{% endif %}></div>
+          <div class="field chk-field"><label>Presence</label><input type="number" name="presence" value="{{ data.presence }}"><input type="checkbox" name="presence_chk" {% if data.presence_chk %}checked{% endif %}></div>
+          <div class="field chk-field"><label>Knowledge</label><input type="number" name="knowledge" value="{{ data.knowledge }}"><input type="checkbox" name="knowledge_chk" {% if data.knowledge_chk %}checked{% endif %}></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section two-col">
+      <div class="col-left">
+        <div class="field-row dt-row">
+          <span class="dt-label"><span class="dt-l1">Minor</span><span class="dt-l2">Damage</span></span>
+          <input type="number" name="damage_threshold_1" class="dt-input" value="{{ data.damage_threshold_1 }}">
+          <span class="dt-label"><span class="dt-l1">Major</span><span class="dt-l2">Damage</span></span>
+          <input type="number" name="damage_threshold_2" class="dt-input" value="{{ data.damage_threshold_2 }}">
+          <span class="dt-label"><span class="dt-l1">Severe</span><span class="dt-l2">Damage</span></span>
+        </div>
+        <div class="field-row">
+          <div class="field field-short"><label>HP</label><input type="number" name="hp" id="hp" value="{{ data.hp }}" min="0" max="12"></div>
+          <div class="field chk-group" data-field="marked_hp" data-parent="hp">
+            <label>Marked HP</label>
+            <div class="chk-boxes" id="chk-marked_hp">
+              {% for i in range(data.marked_hp|length) %}
+              <input type="checkbox" data-idx="{{ i }}"{% if data.marked_hp[i] %} checked{% endif %}>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field field-short"><label>Stress</label><input type="number" name="stress" id="stress" value="{{ data.stress }}" min="0" max="12"></div>
+          <div class="field chk-group" data-field="marked_stress" data-parent="stress">
+            <label>Marked Stress</label>
+            <div class="chk-boxes" id="chk-marked_stress">
+              {% for i in range(data.marked_stress|length) %}
+              <input type="checkbox" data-idx="{{ i }}"{% if data.marked_stress[i] %} checked{% endif %}>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field chk-group" data-field="hope">
+            <label>Hope</label>
+            <div class="chk-boxes" id="chk-hope">
+              {% for i in range(6) %}
+              <input type="checkbox" data-idx="{{ i }}"{% if data.hope|length > i and data.hope[i] %} checked{% endif %}>
+              {% endfor %}
+            </div>
+          </div>
+          <div class="field field-short"><label>Scars</label><input type="number" name="scars" id="scars" value="{{ data.scars }}" min="0" max="6"></div>
+        </div>
+        <div class="hope-feature" id="hopeFeature"></div>
+
+        <h2>Experience</h2>
+        <div class="exp-grid">
+          <div class="exp-row exp-header">
+            <span class="exp-header-text"></span>
+            <span class="exp-header-bonus">Bonus</span>
+            <span class="exp-header-chk"></span>
+          </div>
+          {% for i in range(5) %}
+          <div class="exp-row">
+            <div class="exp-text-wrap">
+              <input type="text" name="experience_{{ i }}" value="{{ data['experience_' ~ i] }}">
+            </div>
+            <div class="exp-bonus-wrap">
+              <input type="number" name="bonus_{{ i }}" value="{{ data['bonus_' ~ i] }}" min="0" max="5">
+            </div>
+            <div class="exp-chk-wrap">
+              <input type="checkbox" name="experience_chk_{{ i }}" class="exp-disable-chk"{% if data['experience_chk_' ~ i] %} checked{% endif %}>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+
+        <h2>Gold</h2>
+        <div class="field-row gold-row">
+          <div class="field gold-field"><label>Gold</label><input type="number" name="gold" class="gold-input" value="{{ data.gold }}" min="0"></div>
+          <div class="field gold-field"><label>Handfuls</label><input type="number" name="handfuls" class="gold-input" value="{{ data.handfuls }}" min="0"></div>
+          <div class="field gold-field"><label>Bags</label><input type="number" name="bags" class="gold-input" value="{{ data.bags }}" min="0"></div>
+          <div class="field gold-field"><label>Chests</label><input type="number" name="chests" class="gold-input" value="{{ data.chests }}" min="0"></div>
+          <div class="field gold-field gold-field-total"><label>Total</label><input type="number" id="goldTotal" value="0" readonly></div>
+        </div>
+
+        <div class="class-feature-section" id="classFeatureSection"{% if not data.class_name %} style="display:none"{% endif %}>
+          <h2>Class Feature</h2>
+          <div id="classFeatureContent"></div>
+        </div>
+        <div class="class-feature-section" id="multiclassSection"{% if not data.class_name %} style="display:none"{% endif %}>
+          <h2>Multiclass</h2>
+          <div class="field-row">
+            <div class="field mc-class-field"><label>Class</label><select id="multiclassClassSelect" name="multiclass_class" onchange="onMulticlassChange()"><option value="">-- Select --</option></select></div>
+            <div class="field mc-domains-field"><label>Chosen Domain</label><input type="hidden" name="multiclass_domain" id="multiclass_domain" value="{{ data.multiclass_domain }}"><div class="domain-chips" id="multiclassDomainChips"></div></div>
+            <div class="field mc-subclass-field"><label>Subclass</label><select name="multiclass_subclass" id="multiclassSubclassSelect"><option value="">-- Select --</option></select></div>
+          </div>
+          <div id="multiclassFeatureContent"></div>
+        </div>
+      </div>
+      <div class="col-right">
+        <div class="weapon-sub">
+          <div class="field"><label>Weapon Proficiency</label><input type="number" name="weapon_proficiency" value="{{ data.weapon_proficiency }}"></div>
+        </div>
+        <div class="weapon-sub">
+          <h2>Primary Weapon</h2>
+          <input type="hidden" name="primary_weapon_ref" id="primary_weapon_ref" value="{{ data.primary_weapon_ref }}">
+          <div class="field-row">
+            <div class="field"><label>Select Weapon</label><select id="primaryWeaponSelect" onchange="onWeaponSelect('primary')"><option value="">-- Empty --</option>{% for item in items if item.type == 'weapon' %}<option value="{{ item|make_item_ref }}"{% if data.primary_weapon_ref == item|make_item_ref %} selected{% endif %}>{{ item.name }}</option>{% endfor %}{% for item in default_items if item.type == 'weapon' %}<option value="{{ item|make_item_ref }}"{% if data.primary_weapon_ref == item|make_item_ref %} selected{% endif %}>{{ item.name }}</option>{% endfor %}</select></div>
+            <div class="field"><label>Burden</label><input type="text" id="primary_burden" value="{{ data.primary_burden }}" readonly></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Item</label><input type="text" name="primary_weapon" id="primary_weapon" value="{{ data.primary_weapon }}" readonly></div>
+            <div class="field"><label>Name</label><input type="text" name="primary_name" id="primary_name" value="{{ data.primary_name }}" readonly></div>
+          </div>
+          <div class="field-row">
+            <div class="field weapon-field"><label>Trait</label><input type="text" name="primary_trait" id="primary_trait" value="{{ data.primary_trait }}" readonly></div>
+            <div class="field weapon-field"><label>Range</label><input type="text" name="primary_range" id="primary_range" value="{{ data.primary_range }}" readonly></div>
+            <div class="field weapon-field"><label>Damage Dice</label><input type="text" name="primary_damage_dice" id="primary_damage_dice" value="{{ data.primary_damage_dice }}" readonly></div>
+            <div class="field weapon-field"><label>Type</label><input type="text" name="primary_type" id="primary_type" value="{{ data.primary_type }}" readonly></div>
+          </div>
+          <div class="field-row">
+            <div class="field weapon-field" style="flex:2"><label>Feature</label><input type="text" name="primary_feature" id="primary_feature" value="{{ data.primary_feature }}" readonly></div>
+          </div>
+        </div>
+        <div class="weapon-sub">
+          <h2>Secondary Weapon</h2>
+          <input type="hidden" name="secondary_weapon_ref" id="secondary_weapon_ref" value="{{ data.secondary_weapon_ref }}">
+          <div class="field-row">
+            <div class="field"><label>Select Weapon</label><select id="secondaryWeaponSelect" onchange="onWeaponSelect('secondary')"><option value="">-- Empty --</option>{% for item in items if item.type == 'weapon' %}<option value="{{ item|make_item_ref }}"{% if data.secondary_weapon_ref == item|make_item_ref %} selected{% endif %}>{{ item.name }}</option>{% endfor %}{% for item in default_items if item.type == 'weapon' %}<option value="{{ item|make_item_ref }}"{% if data.secondary_weapon_ref == item|make_item_ref %} selected{% endif %}>{{ item.name }}</option>{% endfor %}</select></div>
+            <div class="field"><label>Burden</label><input type="text" id="secondary_burden" value="{{ data.secondary_burden }}" readonly></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Item</label><input type="text" name="secondary_weapon" id="secondary_weapon" value="{{ data.secondary_weapon }}" readonly></div>
+            <div class="field"><label>Name</label><input type="text" name="secondary_name" id="secondary_name" value="{{ data.secondary_name }}" readonly></div>
+          </div>
+          <div class="field-row">
+            <div class="field weapon-field"><label>Trait</label><input type="text" name="secondary_trait" id="secondary_trait" value="{{ data.secondary_trait }}" readonly></div>
+            <div class="field weapon-field"><label>Range</label><input type="text" name="secondary_range" id="secondary_range" value="{{ data.secondary_range }}" readonly></div>
+            <div class="field weapon-field"><label>Damage Dice</label><input type="text" name="secondary_damage_dice" id="secondary_damage_dice" value="{{ data.secondary_damage_dice }}" readonly></div>
+            <div class="field weapon-field"><label>Type</label><input type="text" name="secondary_type" id="secondary_type" value="{{ data.secondary_type }}" readonly></div>
+          </div>
+          <div class="field-row">
+            <div class="field weapon-field" style="flex:2"><label>Feature</label><input type="text" name="secondary_feature" id="secondary_feature" value="{{ data.secondary_feature }}" readonly></div>
+          </div>
+        </div>
+        <div class="weapon-sub">
+          <h2>Equipped Armor</h2>
+          <input type="hidden" name="armor_ref" id="armor_ref" value="{{ data.armor_ref }}">
+          <div class="field-row">
+            <div class="field"><label>Select Armor</label><select id="armorSelect" onchange="onArmorSelect()"><option value="">-- Empty --</option>{% for item in items if item.type == 'armor' %}<option value="{{ item|make_item_ref }}"{% if data.armor_ref == item|make_item_ref %} selected{% endif %}>{{ item.name }}</option>{% endfor %}{% for item in default_items if item.type == 'armor' %}<option value="{{ item|make_item_ref }}"{% if data.armor_ref == item|make_item_ref %} selected{% endif %}>{{ item.name }}</option>{% endfor %}</select></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Item</label><input type="text" name="armor_text" id="armor_text" value="{{ data.armor_text }}" readonly></div>
+            <div class="field"><label>Name</label><input type="text" name="feature_name" id="feature_name" value="{{ data.feature_name }}" readonly></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Base Threshold 1</label><input type="number" name="base_threshold_1" id="base_threshold_1" value="{{ data.base_threshold_1 }}" readonly></div>
+            <div class="field"><label>Base Threshold 2</label><input type="number" name="base_threshold_2" id="base_threshold_2" value="{{ data.base_threshold_2 }}" readonly></div>
+            <div class="field"><label>Base Score</label><input type="number" name="base_score" id="base_score" value="{{ data.base_score }}" readonly></div>
+          </div>
+          <div class="field-row">
+            <div class="field weapon-field" style="flex:2"><label>Feature</label><input type="text" name="feature" id="armor_feature" value="{{ data.feature }}" readonly></div>
+          </div>
+        </div>
+        <div class="weapon-sub">
+          <h2>Inventory</h2>
+          {% for i in range(10) %}
+          <div class="inventory-row">
+            <input type="text" name="inventory_{{ i }}_name" value="{{ data['inventory_' ~ i ~ '_name'] }}" placeholder="Item {{ i+1 }}">
+            <input type="number" name="inventory_{{ i }}_qty" value="{{ data['inventory_' ~ i ~ '_qty'] }}" min="0" class="inv-qty">
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="section class-feature-section" id="companionSection" style="display:none">
+      <h2>Companion</h2>
+      <div class="field-row">
+        <div class="field"><label>Companion Name</label><input type="text" name="companion_name" value="{{ data.companion_name }}"></div>
+        <div class="field"><label title="Start at 10">Evasion</label><input type="number" name="companion_evasion" value="{{ data.companion_evasion }}"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Species</label><input type="text" name="companion_species" value="{{ data.companion_species }}"></div>
+        <div class="field"><label>Describe your companion</label><input type="text" name="companion_description" value="{{ data.companion_description }}"></div>
+      </div>
+      <div class="companion-text-block">
+        Work with the GM to decide what kind of animal you have as your companion. Give them a name and draw or attach a picture of them in the space above. Then create two Experiences for your companion based on their training and the history you have together. Finally, describe their method of dealing damage (their standard attack) and record it in the "Attack & Damage" section. Their damage starts at d6 and their range starts at Melee.
+      </div>
+      <h3 class="companion-subtitle">Companion Experience</h3>
+      <div class="companion-exp-grid">
+        <div class="companion-exp-col">
+          <div class="companion-exp-hint">Start with +2 in two Experiences. Whenever you gain a new Experience, your companion also gains one. All new Experiences start at +2.</div>
+          {% for i in range(5) %}
+          <div class="companion-exp-row">
+            <input type="text" name="companion_exp_name_{{ i }}" value="{{ data['companion_exp_name_' ~ i] }}" placeholder="Experience {{ i+1 }}">
+            <input type="number" name="companion_exp_value_{{ i }}" value="{{ data['companion_exp_value_' ~ i] }}" class="companion-exp-val">
+          </div>
+          {% endfor %}
+        </div>
+        <div class="companion-exp-col">
+          <div class="companion-examples">**Example Companion Experiences**<br><br>Bold Distraction, Expert Climber, Fetch, Friendly, Guardian of the Forest, Horrifying, Intimidating, Loyal Until the End, Navigation, Nimble, Nobody Left Behind, On High Alert, Protective, Royal Companion, Scout, Service Animal, Trusted Mount, Vigilant, We Always Find Them, You Can't Hit What You Can't Find</div>
+        </div>
+      </div>
+      <div class="companion-text-block">
+        Make a **Spellcast Roll** to connect with your companion and command them to take action. **Spend a Hope** to add an applicable Companion Experience to the roll. On a success with Hope, if your next action builds on their success, you gain advantage on the roll.
+      </div>
+      <div class="companion-bottom-grid">
+        <div class="companion-bottom-col">
+          <h3 class="companion-subtitle">Attack & Damage</h3>
+          <div class="field-row">
+            <div class="field"><label>Standard Attack</label><input type="text" name="companion_attack" value="{{ data.companion_attack }}"></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Range</label><select name="companion_range"><option value="Melee"{% if data.companion_range == 'Melee' %} selected{% endif %}>Melee</option><option value="Very Close"{% if data.companion_range == 'Very Close' %} selected{% endif %}>Very Close</option><option value="Close"{% if data.companion_range == 'Close' %} selected{% endif %}>Close</option><option value="Far"{% if data.companion_range == 'Far' %} selected{% endif %}>Far</option><option value="Very Far"{% if data.companion_range == 'Very Far' %} selected{% endif %}>Very Far</option></select></div>
+          </div>
+          <div class="companion-dice-group">
+            <label>Damage Die</label>
+            <input type="hidden" name="companion_damage_die" id="companion_damage_die" value="{{ data.companion_damage_die }}">
+            <div class="chk-boxes">
+              <label class="chk-label"><input type="checkbox" class="companion-die-chk" data-value="d6"{% if data.companion_damage_die == 'd6' %} checked{% endif %}> D6</label>
+              <label class="chk-label"><input type="checkbox" class="companion-die-chk" data-value="d8"{% if data.companion_damage_die == 'd8' %} checked{% endif %}> D8</label>
+              <label class="chk-label"><input type="checkbox" class="companion-die-chk" data-value="d10"{% if data.companion_damage_die == 'd10' %} checked{% endif %}> D10</label>
+              <label class="chk-label"><input type="checkbox" class="companion-die-chk" data-value="d12"{% if data.companion_damage_die == 'd12' %} checked{% endif %}> D12</label>
+            </div>
+          </div>
+          <div class="companion-text-block">
+            When you command your companion to attack, they gain any benefits that would normally only apply to you (such as the effects of "Ranger's Focus"). On a success, their damage roll uses your Proficiency and their damage die.
+          </div>
+          <h3 class="companion-subtitle">Stress</h3>
+          <div class="field-row">
+            <div class="field field-short"><label>Stress</label><input type="number" name="companion_stress" id="companion_stress" value="{{ data.companion_stress }}" min="0" max="6"></div>
+            <div class="field chk-group" data-field="companion_marked_stress" data-parent="companion_stress">
+              <label>Marked Stress</label>
+              <div class="chk-boxes" id="chk-companion_marked_stress">
+                {% for i in range(6) %}
+                <input type="checkbox" data-idx="{{ i }}"{% if data.companion_marked_stress|length > i and data.companion_marked_stress[i] %} checked{% endif %}>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+          <div class="companion-text-block">
+            When your companion would take any amount of damage, they mark a Stress. When they mark their last Stress, they drop out of the scene (by hiding, fleeing, or a similar action).<br><br>
+            They remain unavailable until the start of your next long rest, where they return with 1 Stress cleared.<br><br>
+            When you choose a downtime move that clears Stress on yourself, your companion clears an equal number of Stress.
+          </div>
+        </div>
+        <div class="companion-bottom-col">
+          <h3 class="companion-subtitle">Training</h3>
+          <div class="companion-training-hint">When your character levels up, choose one available option for your companion from the following list and mark it here.</div>
+          <div class="tier-option" data-field="companion_training_intelligent">
+            <div class="tier-chks">{% for i in range(3) %}<input type="checkbox" data-idx="{{ i }}"{% if data.companion_training_intelligent|length > i and data.companion_training_intelligent[i] %} checked{% endif %}>{% endfor %}</div>
+            <span><strong>Intelligent</strong>: Your companion gains a permanent +1 bonus to a Companion Experience of your choice.</span>
+          </div>
+          <div class="tier-option">
+            <div class="tier-chks"><input type="checkbox" name="companion_training_light_dark"{% if data.companion_training_light_dark %} checked{% endif %}></div>
+            <span><strong>Light in the Dark:</strong> <input type="checkbox" name="companion_training_light_dark_hope"{% if data.companion_training_light_dark_hope %} checked{% endif %}> Use this as an additional Hope slot your character can mark.</span>
+          </div>
+          <div class="tier-option">
+            <div class="tier-chks"><input type="checkbox" name="companion_training_creature_comfort"{% if data.companion_training_creature_comfort %} checked{% endif %}></div>
+            <span><strong>Creature Comfort</strong>: Once per rest, when you take time during a quiet moment to give your companion love and attention, you can gain a Hope or you can both clear a Stress.</span>
+          </div>
+          <div class="tier-option">
+            <div class="tier-chks"><input type="checkbox" name="companion_training_armored"{% if data.companion_training_armored %} checked{% endif %}></div>
+            <span><strong>Armored</strong>: When your companion takes damage, you can <strong>mark one of your Armor Slots</strong> instead of marking one of their Stress.</span>
+          </div>
+          <div class="tier-option" data-field="companion_training_vicious">
+            <div class="tier-chks">{% for i in range(3) %}<input type="checkbox" data-idx="{{ i }}"{% if data.companion_training_vicious|length > i and data.companion_training_vicious[i] %} checked{% endif %}>{% endfor %}</div>
+            <span><strong>Vicious</strong>: Increase your companion's damage dice or range by one step (d6 to d8, Close to Far, etc.).</span>
+          </div>
+          <div class="tier-option" data-field="companion_training_resilient">
+            <div class="tier-chks">{% for i in range(3) %}<input type="checkbox" data-idx="{{ i }}"{% if data.companion_training_resilient|length > i and data.companion_training_resilient[i] %} checked{% endif %}>{% endfor %}</div>
+            <span><strong>Resilient</strong>: Your companion gains an additional Stress slot.</span>
+          </div>
+          <div class="tier-option">
+            <div class="tier-chks"><input type="checkbox" name="companion_training_bonded"{% if data.companion_training_bonded %} checked{% endif %}></div>
+            <span><strong>Bonded</strong>: When you mark your last Hit Point, your companion rushes to your side to comfort you. Roll a number of <strong>D6s</strong> equal to the unmarked Stress slots they have and mark them. If any roll a 6, your companion helps you up. Clear your last Hit Point and return to the scene.</span>
+          </div>
+          <div class="tier-option" data-field="companion_training_aware">
+            <div class="tier-chks">{% for i in range(3) %}<input type="checkbox" data-idx="{{ i }}"{% if data.companion_training_aware|length > i and data.companion_training_aware[i] %} checked{% endif %}>{% endfor %}</div>
+            <span><strong>Aware</strong>: Your companion gains a permanent +2 bonus to their Evasion.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section tier-section">
+      <h2>Available Points: <span id="availablePoints">0</span></h2>
+      <div class="tier-grid">
+        <div class="tier-col">
+          <h3>Tier 2: Levels 2-4</h3>
+          <p class="tier-text">At level 2, gain an additional Experience at +2 and gain a +1 bonus to your Proficiency.</p>
+          <p class="tier-text">Choose two options from the list below and mark them.</p>
+          <div class="tier-option" data-field="tier2_trait_marks">
+            <div class="tier-chks">{% for i in range(3) %}<input type="checkbox" data-idx="{{ i }}"{% if data.tier2_trait_marks|length > i and data.tier2_trait_marks[i] %} checked{% endif %}>{% endfor %}</div>
+            <span>Gain a +1 bonus to two unmarked character traits and mark them.</span>
+          </div>
+          <div class="tier-option" data-field="tier2_hp_slots">
+            <div class="tier-chks">{% for i in range(2) %}<input type="checkbox" data-idx="{{ i }}"{% if data.tier2_hp_slots|length > i and data.tier2_hp_slots[i] %} checked{% endif %}>{% endfor %}</div>
+            <span>Permanently gain one HP slot.</span>
+          </div>
+          <div class="tier-option" data-field="tier2_stress_slots">
+            <div class="tier-chks">{% for i in range(2) %}<input type="checkbox" data-idx="{{ i }}"{% if data.tier2_stress_slots|length > i and data.tier2_stress_slots[i] %} checked{% endif %}>{% endfor %}</div>
+            <span>Permanently gain one Stress slot.</span>
+          </div>
+          <div class="tier-option"><input type="checkbox" name="tier2_experience_bonus"{% if data.tier2_experience_bonus %} checked{% endif %}><span>Permanently gain a +1 bonus to two Experiences.</span></div>
+          <div class="tier-option"><input type="checkbox" name="tier2_domain_card"{% if data.tier2_domain_card %} checked{% endif %}><span>Choose an additional domain card of your level or lower from a domain you have access to (up to level 4).</span></div>
+          <div class="tier-option"><input type="checkbox" name="tier2_evasion_bonus"{% if data.tier2_evasion_bonus %} checked{% endif %}><span>Permanently gain a +1 bonus to your Evasion.</span></div>
+        </div>
+        <div class="tier-col">
+          <h3>Tier 3: Levels 5-7</h3>
+          <p class="tier-text">At level 5, gain an additional Experience at +2 and clear all marks on character traits. Then gain a +1 bonus to your Proficiency.</p>
+          <p class="tier-text">Choose two options from the list below or any from the previous tier and mark them.</p>
+          <div class="tier-option" data-field="tier3_trait_marks">
+            <div class="tier-chks">{% for i in range(3) %}<input type="checkbox" data-idx="{{ i }}"{% if data.tier3_trait_marks|length > i and data.tier3_trait_marks[i] %} checked{% endif %}>{% endfor %}</div>
+            <span>Gain a +1 bonus to two unmarked character traits and mark them.</span>
+          </div>
+          <div class="tier-option" data-field="tier3_hp_slots">
+            <div class="tier-chks">{% for i in range(2) %}<input type="checkbox" data-idx="{{ i }}"{% if data.tier3_hp_slots|length > i and data.tier3_hp_slots[i] %} checked{% endif %}>{% endfor %}</div>
+            <span>Permanently gain one HP slot.</span>
+          </div>
+          <div class="tier-option" data-field="tier3_stress_slots">
+            <div class="tier-chks">{% for i in range(2) %}<input type="checkbox" data-idx="{{ i }}"{% if data.tier3_stress_slots|length > i and data.tier3_stress_slots[i] %} checked{% endif %}>{% endfor %}</div>
+            <span>Permanently gain one Stress slot.</span>
+          </div>
+          <div class="tier-option"><input type="checkbox" name="tier3_experience_bonus"{% if data.tier3_experience_bonus %} checked{% endif %}><span>Permanently gain a +1 bonus to two Experiences.</span></div>
+          <div class="tier-option"><input type="checkbox" name="tier3_domain_card"{% if data.tier3_domain_card %} checked{% endif %}><span>Choose an additional domain card of your level or lower from a domain you have access to (up to level 7).</span></div>
+          <div class="tier-option"><input type="checkbox" name="tier3_evasion_bonus"{% if data.tier3_evasion_bonus %} checked{% endif %}><span>Permanently gain a +1 bonus to your Evasion.</span></div>
+          <div class="tier-option"><input type="checkbox" name="tier3_upgraded_subclass" id="tier3_upgraded_subclass"{% if data.tier3_upgraded_subclass %} checked{% endif %}><span>Take an upgraded subclass card. Then cross out the multiclass option for this tier.</span></div>
+          <div class="tier-option tier-grouped" data-field="tier3_proficiency">
+            <div class="tier-chks">{% for i in range(2) %}<input type="checkbox" data-idx="{{ i }}"{% if data.tier3_proficiency|length > i and data.tier3_proficiency[i] %} checked{% endif %}>{% endfor %}</div>
+            <span>Increase your Proficiency by +1.</span>
+          </div>
+          <div class="tier-option tier-grouped" data-field="tier3_multiclass">
+            <div class="tier-chks">{% for i in range(2) %}<input type="checkbox" data-idx="{{ i }}"{% if data.tier3_multiclass|length > i and data.tier3_multiclass[i] %} checked{% endif %}>{% endfor %}</div>
+            <span>Multiclass: Choose an additional class for your character, then cross out an unused 'Take an upgraded subclass card' and the other multiclass option on this sheet.</span>
+          </div>
+        </div>
+        <div class="tier-col">
+          <h3>Tier 4: Levels 8-10</h3>
+          <p class="tier-text">At level 8, gain an additional Experience at +2 and clear all marks on character traits. Then gain a +1 bonus to your Proficiency.</p>
+          <p class="tier-text">Choose two options from the list below or any from the previous tier and mark them.</p>
+          <div class="tier-option" data-field="tier4_trait_marks">
+            <div class="tier-chks">{% for i in range(3) %}<input type="checkbox" data-idx="{{ i }}"{% if data.tier4_trait_marks|length > i and data.tier4_trait_marks[i] %} checked{% endif %}>{% endfor %}</div>
+            <span>Gain a +1 bonus to two unmarked character traits and mark them.</span>
+          </div>
+          <div class="tier-option" data-field="tier4_hp_slots">
+            <div class="tier-chks">{% for i in range(2) %}<input type="checkbox" data-idx="{{ i }}"{% if data.tier4_hp_slots|length > i and data.tier4_hp_slots[i] %} checked{% endif %}>{% endfor %}</div>
+            <span>Permanently gain one HP slot.</span>
+          </div>
+          <div class="tier-option" data-field="tier4_stress_slots">
+            <div class="tier-chks">{% for i in range(2) %}<input type="checkbox" data-idx="{{ i }}"{% if data.tier4_stress_slots|length > i and data.tier4_stress_slots[i] %} checked{% endif %}>{% endfor %}</div>
+            <span>Permanently gain one Stress slot.</span>
+          </div>
+          <div class="tier-option"><input type="checkbox" name="tier4_experience_bonus"{% if data.tier4_experience_bonus %} checked{% endif %}><span>Permanently gain a +1 bonus to two Experiences.</span></div>
+          <div class="tier-option"><input type="checkbox" name="tier4_domain_card"{% if data.tier4_domain_card %} checked{% endif %}><span>Choose an additional domain card of your level or lower from a domain you have access to (up to level 7).</span></div>
+          <div class="tier-option"><input type="checkbox" name="tier4_evasion_bonus"{% if data.tier4_evasion_bonus %} checked{% endif %}><span>Permanently gain a +1 bonus to your Evasion.</span></div>
+          <div class="tier-option"><input type="checkbox" name="tier4_upgraded_subclass" id="tier4_upgraded_subclass"{% if data.tier4_upgraded_subclass %} checked{% endif %}><span>Take an upgraded subclass card. Then cross out the multiclass option for this tier.</span></div>
+          <div class="tier-option tier-grouped" data-field="tier4_proficiency">
+            <div class="tier-chks">{% for i in range(2) %}<input type="checkbox" data-idx="{{ i }}"{% if data.tier4_proficiency|length > i and data.tier4_proficiency[i] %} checked{% endif %}>{% endfor %}</div>
+            <span>Increase your Proficiency by +1.</span>
+          </div>
+          <div class="tier-option tier-grouped" data-field="tier4_multiclass">
+            <div class="tier-chks">{% for i in range(2) %}<input type="checkbox" data-idx="{{ i }}"{% if data.tier4_multiclass|length > i and data.tier4_multiclass[i] %} checked{% endif %}>{% endfor %}</div>
+            <span>Multiclass: Choose an additional class for your character, then cross out an unused 'Take an upgraded subclass card' and the other multiclass option on this sheet.</span>
+          </div>
+        </div>
+      </div>
+      <div class="tier-footer">
+        <p>Update your level and adjust your damage thresholds accordingly. Take an additional domain card of your level or lower from a domain you have access to.</p>
+        <p><strong>Note:</strong> Items marked by a border require both marks to be checked at the same time, and their feature is awarded only once.</p>
+      </div>
+    </div>
+  </form>
+</div>
+
+<div class="modal-overlay" id="itemsModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeItemsModal()">&times;</button>
+    <h2>Item Management</h2>
+    <div class="items-list" id="itemsList"></div>
+    <div class="modal-buttons">
+      <button class="btn-success" onclick="addNewItem()">Add Item</button>
+      <button class="btn-secondary" onclick="downloadItems()">Download Items</button>
+      <button class="btn-secondary" onclick="document.getElementById('itemsFileInput').click()">Upload Items</button>
+      <button class="btn-primary" onclick="saveItems(event)">Save Items</button>
+    </div>
+    <input type="file" id="itemsFileInput" accept=".json" style="display:none" onchange="loadItemsFile(event)">
+  </div>
+</div>
+
+<div class="modal-overlay" id="itemEditModal">
+  <div class="modal" style="max-width:600px">
+    <button class="modal-close" onclick="closeItemEdit()">&times;</button>
+    <h2 id="itemEditTitle">Add Item</h2>
+    <div class="field-row" style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #1a3a5c">
+      <div class="field"><label>Import from existing item</label><select id="itemImportSelect" onchange="onImportSelect()"><option value="">-- Select to import --</option></select></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Type</label><select id="itemEditType" onchange="onItemEditTypeChange()"><option value="weapon">Weapon</option><option value="armor">Armor</option></select></div>
+    </div>
+    <div id="itemEditWeaponFields">
+      <div class="field-row">
+        <div class="field"><label>Weapon</label><input type="text" id="itemEditWeapon" placeholder="e.g. Longsword"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Trait</label><input type="text" id="itemEditTrait"></div>
+        <div class="field"><label>Range</label><input type="text" id="itemEditRange"></div>
+        <div class="field"><label>Damage Dice</label><input type="text" id="itemEditDamageDice"></div>
+        <div class="field"><label>Burden</label><select id="itemEditBurden"><option value="One-Handed">One-Handed</option><option value="Two-Handed">Two-Handed</option></select></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Name</label><input type="text" id="itemEditName"></div>
+        <div class="field"><label>Feature</label><input type="text" id="itemEditFeature"></div>
+        <div class="field"><label>Type</label><input type="text" id="itemEditDamageType"></div>
+      </div>
+    </div>
+    <div id="itemEditArmorFields" style="display:none">
+      <div class="field-row">
+        <div class="field"><label>Armor</label><input type="text" id="itemEditArmor" placeholder="e.g. Plate"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Base Threshold 1</label><input type="number" id="itemEditBaseTh1"></div>
+        <div class="field"><label>Base Threshold 2</label><input type="number" id="itemEditBaseTh2"></div>
+        <div class="field"><label>Base Score</label><input type="number" id="itemEditBaseScore"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Name</label><input type="text" id="itemEditArmorName"></div>
+        <div class="field"><label>Feature</label><input type="text" id="itemEditArmorFeature"></div>
+      </div>
+    </div>
+    <div class="modal-buttons">
+      <button class="btn-primary" onclick="saveItemEdit()">Save</button>
+      <button class="btn-secondary" onclick="closeItemEdit()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="detailsModal">
+  <div class="modal" style="max-width:700px">
+    <button class="modal-close" onclick="closeDetailsModal()">&times;</button>
+    <h2>Character Details</h2>
+    <div class="details-edit-section">
+      <h3>Classes</h3>
+      <div class="options-list" id="classesList"></div>
+    </div>
+    <div class="details-edit-section">
+      <h3>Domains</h3>
+      <div class="options-list" id="domainsList"></div>
+    </div>
+    <div class="details-edit-section">
+      <h3>Ancestries</h3>
+      <div class="options-list" id="ancestriesList"></div>
+      <div class="add-option-row"><input type="text" id="newAncestryInput" placeholder="Add ancestry..."><button onclick="addAncestryOption()">Add</button></div>
+    </div>
+    <div class="details-edit-section">
+      <h3>Communities</h3>
+      <div class="options-list" id="communitiesList"></div>
+    </div>
+    <div class="details-edit-section">
+      <h3>Subclasses <button class="btn-small" onclick="toggleSubclasses()" id="subclassesToggle">Show all</button></h3>
+      <div id="subclassesDisplay"></div>
+    </div>
+    <div class="details-edit-section">
+      <h3>Hope Features <button class="btn-small" onclick="toggleHopeFeatures()" id="hopeFeaturesToggle">Show all</button></h3>
+      <div id="hopeFeaturesDisplay"></div>
+    </div>
+    <div class="modal-buttons">
+      <button class="btn-primary" onclick="saveDetails(event)">Save Details</button>
+      <button class="btn-secondary" onclick="closeDetailsModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const DOMAIN_INFO = {
+  'Arcana': { light: '#75509f', dark: '#4a3067' },
+  'Blade': { light: '#8e1f13', dark: '#5c0e06' },
+  'Blood': { light: '#700000', dark: '#4e1111' },
+  'Bone': { light: '#868686', dark: '#65625c' },
+  'Codex': { light: '#3262a2', dark: '#203f6a' },
+  'Grace': { light: '#9f365d', dark: '#7c163c' },
+  'Midnight': { light: '#1b686f', dark: '#0b494f' },
+  'Sage': { light: '#52822b', dark: '#346011' },
+  'Splendor': { light: '#9b8d1a', dark: '#6a600c' },
+  'Valor': { light: '#df903c', dark: '#9c6020' }
+};
+const ALL_ITEMS = {{ items | tojson }};
+const DEFAULT_ITEMS = {{ default_items | tojson }};
+// Combined item pool for lookup (custom + default)
+const COMBINED_ITEMS = ALL_ITEMS.concat(DEFAULT_ITEMS);
+const CHAR_DATA = {{ data | tojson }};
+const CLASS_DATA = {{ class_data | tojson }};
+const DEFAULT_ANCESTRIES = {{ default_ancestries | tojson }};
+
+function makeItemRef(item) {
+  if (item.type === 'armor') return 'armor_' + ((item.armor || item.name) || '');
+  return 'weapon_' + ((item.weapon || item.name) || '');
+}
+
+function findItemByRef(ref) {
+  if (!ref) return null;
+  for (const item of COMBINED_ITEMS) {
+    if (makeItemRef(item) === ref) return item;
+  }
+  // Backward compat: try old format (armor_weapon_name or weapon_weapon_name)
+  if (ref.startsWith('armor_') || ref.startsWith('weapon_')) {
+    const parts = ref.split('_');
+    if (parts.length >= 3) {
+      const name = parts.slice(2).join('_');
+      for (const item of COMBINED_ITEMS) {
+        if (item.type === 'armor' && ref.startsWith('armor_') && (item.name === name || item.armor === name)) return item;
+        if (item.type === 'weapon' && ref.startsWith('weapon_') && (item.name === name || item.weapon === name)) return item;
+      }
+    }
+  }
+  return null;
+}
+
+function onWeaponSelect(which) {
+  const sel = document.getElementById(which + 'WeaponSelect');
+  const ref = sel.value;
+  const item = findItemByRef(ref);
+  const prefix = which === 'primary' ? 'primary' : 'secondary';
+  document.getElementById(prefix + '_weapon_ref').value = ref;
+  const map = {
+    'trait': prefix + '_trait',
+    'range': prefix + '_range',
+    'damage_dice': prefix + '_damage_dice',
+    'damage_type': prefix + '_type',
+    'feature': prefix + '_feature'
+  };
+  for (const [itemKey, elId] of Object.entries(map)) {
+    document.getElementById(elId).value = item ? (item[itemKey] || '') : '';
+  }
+  // Item field shows base weapon type; Name field stays independent
+  document.getElementById(prefix + '_weapon').value = item ? (item.weapon || item.name || '') : '';
+  // Set burden field
+  document.getElementById(prefix + '_burden').value = item ? (item.burden || '') : '';
+}
+
+function onArmorSelect() {
+  const sel = document.getElementById('armorSelect');
+  const ref = sel.value;
+  const item = findItemByRef(ref);
+  document.getElementById('armor_ref').value = ref;
+  const map = {
+    'base_threshold_1': 'base_threshold_1',
+    'base_threshold_2': 'base_threshold_2',
+    'base_score': 'base_score',
+    'feature': 'armor_feature'
+  };
+  for (const [itemKey, elId] of Object.entries(map)) {
+    document.getElementById(elId).value = item ? (item[itemKey] ?? '') : '';
+  }
+  // Item field shows base armor type; Name field stays independent
+  document.getElementById('armor_text').value = item ? (item.armor || item.name || '') : '';
+}
+
+function renderMarkdown(text) {
+  return text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+}
+
+function onClassChange() {
+  const cls = document.getElementById('classSelect').value;
+  const el = document.getElementById('hopeFeature');
+  if (cls && CLASS_DATA.hope_features && CLASS_DATA.hope_features[cls]) {
+    el.innerHTML = renderMarkdown(CLASS_DATA.hope_features[cls]);
+    el.style.display = 'block';
+  } else {
+    el.style.display = 'none';
+  }
+  const domainsRow = document.getElementById('domainsRow');
+  const chips = document.getElementById('domainChips');
+  if (cls && CLASS_DATA.class_domains && CLASS_DATA.class_domains[cls]) {
+    domainsRow.style.display = '';
+    chips.innerHTML = CLASS_DATA.class_domains[cls].map(d => {
+      const info = DOMAIN_INFO[d] || {};
+      return '<span class="domain-chip" style="background:' + (info.light || '#555') + ';background:radial-gradient(' + (info.light || '#555') + ',' + (info.dark || '#333') + ');">' +
+        '<img src="/static/domains/' + d.toLowerCase() + '.svg" alt="' + d + '">' +
+        '<span>' + d + '</span></span>';
+    }).join('');
+  } else {
+    domainsRow.style.display = 'none';
+  }
+  const subSel = document.getElementById('subclassSelect');
+  let currentSub = subSel.value;
+  if (currentSub === '' && CHAR_DATA && CHAR_DATA.subclass) { currentSub = CHAR_DATA.subclass; }
+  const subs = (cls && CLASS_DATA.class_subclasses && CLASS_DATA.class_subclasses[cls]) || [];
+  subSel.innerHTML = '<option value="">-- Select --</option>' + subs.map(s => '<option value="' + s.replace(/"/g, '&quot;') + '"' + (s === currentSub ? ' selected' : '') + '>' + s.replace(/</g, '&lt;') + '</option>').join('');
+  renderClassFeature(cls);
+  // Populate multiclass class dropdown excluding the main class
+  const mcSel = document.getElementById('multiclassClassSelect');
+  const currentMC = mcSel.value;
+  const otherClasses = CLASS_DATA.classes.filter(c => c !== cls);
+  mcSel.innerHTML = '<option value="">-- Select --</option>' + otherClasses.map(c => '<option value="' + c.replace(/"/g, '&quot;') + '"' + (c === currentMC ? ' selected' : '') + '>' + c.replace(/</g, '&lt;') + '</option>').join('');
+  onMulticlassChange();
+  updateCompanionVisibility();
+}
+
+function onMulticlassChange() {
+  const cls = document.getElementById('multiclassClassSelect').value;
+  const section = document.getElementById('multiclassFeatureContent');
+  const chips = document.getElementById('multiclassDomainChips');
+  const subSel = document.getElementById('multiclassSubclassSelect');
+  const domainInput = document.getElementById('multiclass_domain');
+  if (!cls) {
+    section.innerHTML = '';
+    chips.innerHTML = '';
+    subSel.innerHTML = '<option value="">-- Select --</option>';
+    return;
+  }
+  // Render domain chips (clickable)
+  const domains = CLASS_DATA.class_domains && CLASS_DATA.class_domains[cls] || [];
+  const savedDomain = domainInput.value;
+  chips.innerHTML = domains.map(d => {
+    const info = DOMAIN_INFO[d] || {};
+    const active = d === savedDomain ? ' domain-chip-active' : '';
+    return '<span class="domain-chip' + active + '" style="background:' + (info.light || '#555') + ';background:radial-gradient(' + (info.light || '#555') + ',' + (info.dark || '#333') + ');cursor:pointer" data-domain="' + d + '" onclick="selectMulticlassDomain(\'' + d + '\')">' +
+      '<img src="/static/domains/' + d.toLowerCase() + '.svg" alt="' + d + '">' +
+      '<span>' + d + '</span></span>';
+  }).join('');
+  // Populate subclass dropdown
+  let currentSub = subSel.value;
+  const subs = CLASS_DATA.class_subclasses && CLASS_DATA.class_subclasses[cls] || [];
+  subSel.innerHTML = '<option value="">-- Select --</option>' + subs.map(s => '<option value="' + s.replace(/"/g, '&quot;') + '"' + (s === currentSub ? ' selected' : '') + '>' + s.replace(/</g, '&lt;') + '</option>').join('');
+  // Render class feature
+  renderMulticlassFeature(cls);
+  updateCompanionVisibility();
+}
+
+function selectMulticlassDomain(domain) {
+  document.getElementById('multiclass_domain').value = domain;
+  const chips = document.getElementById('multiclassDomainChips');
+  chips.querySelectorAll('.domain-chip').forEach(chip => {
+    chip.classList.toggle('domain-chip-active', chip.dataset.domain === domain);
+  });
+  chips.classList.add('domain-has-selection');
+}
+
+function renderMulticlassFeature(cls) {
+  const section = document.getElementById('multiclassFeatureContent');
+  if (!cls || !CLASS_DATA.class_features || !CLASS_DATA.class_features[cls]) {
+    section.innerHTML = '';
+    return;
+  }
+  const feature = CLASS_DATA.class_features[cls];
+  const level = parseInt(document.querySelector('input[name="level"]').value) || 1;
+  let html = '<div class="cf-description">' + renderMarkdown(feature.description).replace(/\n/g, '<br>') + '</div>';
+  if (feature.left_column || feature.right_column) {
+    html += '<div class="cf-columns">';
+    if (feature.left_column) {
+      html += '<div class="cf-col cf-col-left"><div class="cf-col-inner">' + renderMarkdown(feature.left_column).replace(/\n/g, '<br>') + '</div></div>';
+    }
+    if (feature.right_column) {
+      html += '<div class="cf-col cf-col-right"><div class="cf-col-inner">';
+      feature.right_column.forEach(item => {
+        if (item.type === 'title') {
+          html += '<div class="cf-field-title">' + renderMarkdown(item.label) + '</div>';
+        } else if (item.type === 'number') {
+          const val = CHAR_DATA[item.field] || 1;
+          let maxVal = item.max || 99;
+          html += '<div class="cf-field"><input type="number" name="' + item.field + '" value="' + val + '" min="' + (item.min || 1) + '" max="' + maxVal + '"></div>';
+        } else if (item.type === 'checkbox') {
+          const checked = CHAR_DATA[item.field] ? ' checked' : '';
+          html += '<div class="cf-field cf-chk"><input type="checkbox" name="' + item.field + '"' + checked + '><label>' + renderMarkdown(item.label) + '</label></div>';
+        }
+      });
+      html += '</div></div>';
+    }
+    html += '</div>';
+  }
+  section.innerHTML = html;
+}
+
+function updateCompanionVisibility() {
+  const section = document.getElementById('companionSection');
+  const cls = document.getElementById('classSelect').value;
+  const sub = document.getElementById('subclassSelect').value;
+  const mcCls = document.getElementById('multiclassClassSelect').value;
+  const mcSub = document.getElementById('multiclassSubclassSelect').value;
+  const visible = (cls === 'Ranger' && sub === 'Beastbound') || (mcCls === 'Ranger' && mcSub === 'Beastbound');
+  section.style.display = visible ? '' : 'none';
+}
+
+function initCompanionDice() {
+  document.querySelectorAll('.companion-die-chk').forEach(cb => {
+    cb.addEventListener('change', function() {
+      if (this.checked) {
+        document.querySelectorAll('.companion-die-chk').forEach(c => { if (c !== this) c.checked = false; });
+        document.getElementById('companion_damage_die').value = this.dataset.value;
+      } else {
+        // If unchecking the only checked one, set to d6
+        const anyChecked = document.querySelector('.companion-die-chk:checked');
+        if (!anyChecked) {
+          document.querySelector('.companion-die-chk[data-value="d6"]').checked = true;
+          document.getElementById('companion_damage_die').value = 'd6';
+        }
+      }
+    });
+  });
+}
+
+function collectFormData() {
+  const data = {};
+  document.querySelectorAll('#charForm input[name], #charForm select[name]').forEach(el => {
+    if (el.type === 'checkbox') {
+      data[el.name] = el.checked;
+    } else if (el.type === 'number') {
+      data[el.name] = el.value === '' ? 0 : Number(el.value);
+    } else {
+      data[el.name] = el.value;
+    }
+  });
+  document.querySelectorAll('.chk-group').forEach(group => {
+    const field = group.dataset.field;
+    const boxes = group.querySelectorAll('.chk-boxes input[type="checkbox"]');
+    data[field] = Array.from(boxes).map(cb => cb.checked);
+  });
+  document.querySelectorAll('.tier-section [data-field]').forEach(group => {
+    const field = group.dataset.field;
+    const boxes = group.querySelectorAll('.tier-chks input[type="checkbox"]');
+    data[field] = Array.from(boxes).map(cb => cb.checked);
+  });
+  // Companion multi-check training fields
+  document.querySelectorAll('#companionSection .tier-option[data-field]').forEach(group => {
+    const field = group.dataset.field;
+    const boxes = group.querySelectorAll('.tier-chks input[type="checkbox"]');
+    data[field] = Array.from(boxes).map(cb => cb.checked);
+  });
+  return data;
+}
+
+function syncCheckboxGroup(parentId, targetId) {
+  const parent = document.getElementById(parentId);
+  const container = document.getElementById('chk-' + targetId);
+  if (!parent || !container) return;
+  const count = Math.max(0, parseInt(parent.value) || 0);
+  const existing = container.querySelectorAll('input[type="checkbox"]');
+  while (container.children.length < count) {
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.dataset.idx = container.children.length;
+    container.appendChild(cb);
+  }
+  while (container.children.length > count) {
+    container.removeChild(container.lastChild);
+  }
+}
+
+function syncHopeCheckboxes() {
+  const scars = Math.max(0, Math.min(6, parseInt(document.getElementById('scars').value) || 0));
+  const container = document.getElementById('chk-hope');
+  if (!container) return;
+  const boxes = container.querySelectorAll('input[type="checkbox"]');
+  boxes.forEach((cb, i) => {
+    if (i >= 6 - scars) {
+      cb.checked = false;
+      cb.disabled = true;
+    } else {
+      cb.disabled = false;
+    }
+  });
+}
+
+function syncExpRow(chk) {
+  const row = chk.closest('.exp-row');
+  if (!row) return;
+  const textInput = row.querySelector('.exp-text-wrap input');
+  const bonusInput = row.querySelector('.exp-bonus-wrap input');
+  const disabled = chk.checked;
+  if (textInput) textInput.disabled = disabled;
+  if (bonusInput) bonusInput.disabled = disabled;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.chk-group').forEach(g => {
+    const parent = document.getElementById(g.dataset.parent);
+    if (parent) {
+      parent.addEventListener('input', function() { syncCheckboxGroup(g.dataset.parent, g.dataset.field); });
+    }
+  });
+  syncCheckboxGroup('companion_stress', 'companion_marked_stress');
+  const scars = document.getElementById('scars');
+  if (scars) {
+    scars.addEventListener('input', syncHopeCheckboxes);
+    syncHopeCheckboxes();
+  }
+  document.querySelectorAll('.exp-disable-chk').forEach(chk => {
+    chk.addEventListener('change', function() { syncExpRow(this); });
+    syncExpRow(chk);
+  });
+  document.querySelectorAll('.gold-input').forEach(inp => {
+    inp.addEventListener('input', calcGoldTotal);
+  });
+  calcGoldTotal();
+  document.getElementById('classSelect').addEventListener('change', onClassChange);
+  onClassChange();
+  document.querySelector('input[name="level"]').addEventListener('input', function() { updateTier(); updateAvailablePoints(); renderClassFeature(document.getElementById('classSelect').value); });
+  updateTier();
+  document.querySelectorAll('.tier-section input[type="checkbox"]').forEach(cb => {
+    cb.addEventListener('change', function() { syncTierCheckboxes(); updateAvailablePoints(); });
+  });
+  syncTierCheckboxes();
+  document.querySelectorAll('.tier-grouped').forEach(group => {
+    const boxes = group.querySelectorAll('.tier-chks input[type="checkbox"]');
+    boxes.forEach(cb => {
+      cb.addEventListener('change', function() {
+        boxes.forEach(b => b.checked = this.checked);
+        syncTierCheckboxes();
+        updateAvailablePoints();
+      });
+    });
+  });
+  updateAvailablePoints();
+  // Companion subclass change hooks
+  document.getElementById('subclassSelect').addEventListener('change', updateCompanionVisibility);
+  document.getElementById('multiclassSubclassSelect').addEventListener('change', updateCompanionVisibility);
+  initCompanionDice();
+  // Render **bold** in companion text blocks
+  document.querySelectorAll('.companion-text-block, .companion-examples').forEach(el => {
+    el.innerHTML = renderMarkdown(el.innerHTML);
+  });
+});
+
+function calcGoldTotal() {
+  const g = parseFloat(document.querySelector('input[name="gold"]').value) || 0;
+  const h = parseFloat(document.querySelector('input[name="handfuls"]').value) || 0;
+  const b = parseFloat(document.querySelector('input[name="bags"]').value) || 0;
+  const c = parseFloat(document.querySelector('input[name="chests"]').value) || 0;
+  document.getElementById('goldTotal').value = g + h * 10 + b * 100 + c * 1000;
+}
+
+function syncTierCheckboxes() {
+  function anyChecked(sel) {
+    return Array.from(document.querySelectorAll(sel)).some(cb => cb.checked);
+  }
+  function setDisabled(sel, disabled) {
+    document.querySelectorAll(sel).forEach(cb => {
+      if (disabled) { cb.checked = false; cb.disabled = true; }
+      else { cb.disabled = false; }
+    });
+  }
+  function enableCheckboxes() {
+    document.querySelectorAll('.tier-section input[type="checkbox"]').forEach(cb => cb.disabled = false);
+  }
+  enableCheckboxes();
+  if (document.getElementById('tier3_upgraded_subclass')?.checked) {
+    setDisabled('[data-field="tier3_multiclass"] .tier-chks input', true);
+  }
+  if (document.getElementById('tier4_upgraded_subclass')?.checked) {
+    setDisabled('[data-field="tier4_multiclass"] .tier-chks input', true);
+  }
+  if (anyChecked('[data-field="tier3_multiclass"] .tier-chks input')) {
+    setDisabled('[data-field="tier4_multiclass"] .tier-chks input', true);
+    setDisabled('#tier3_upgraded_subclass', true);
+  }
+  if (anyChecked('[data-field="tier4_multiclass"] .tier-chks input')) {
+    setDisabled('[data-field="tier3_multiclass"] .tier-chks input', true);
+    setDisabled('#tier4_upgraded_subclass', true);
+  }
+}
+
+function updateAvailablePoints() {
+  const level = parseInt(document.querySelector('input[name="level"]').value) || 1;
+  const total = Math.max(0, (level - 1) * 2);
+  const spent = document.querySelectorAll('.tier-section input[type="checkbox"]:checked').length;
+  document.getElementById('availablePoints').textContent = total - spent;
+}
+
+function getTier(level) {
+  if (level >= 8) return 4;
+  if (level >= 5) return 3;
+  if (level >= 2) return 2;
+  return 1;
+}
+
+function updateTier() {
+  const level = parseInt(document.querySelector('input[name="level"]').value) || 1;
+  document.getElementById('tierField').value = getTier(level);
+}
+
+function renderClassFeature(cls) {
+  const section = document.getElementById('classFeatureSection');
+  const content = document.getElementById('classFeatureContent');
+  if (!cls || !CLASS_DATA.class_features || !CLASS_DATA.class_features[cls]) {
+    section.style.display = 'none';
+    return;
+  }
+  section.style.display = '';
+  const feature = CLASS_DATA.class_features[cls];
+  const level = parseInt(document.querySelector('input[name="level"]').value) || 1;
+  const tier = getTier(level);
+  let html = '<div class="cf-description">' + renderMarkdown(feature.description).replace(/\n/g, '<br>') + '</div>';
+  if (feature.left_column || feature.right_column) {
+    html += '<div class="cf-columns">';
+    if (feature.left_column) {
+      html += '<div class="cf-col cf-col-left"><div class="cf-col-inner">' + renderMarkdown(feature.left_column).replace(/\n/g, '<br>') + '</div></div>';
+    }
+    if (feature.right_column) {
+      html += '<div class="cf-col cf-col-right"><div class="cf-col-inner">';
+      feature.right_column.forEach(item => {
+        if (item.type === 'title') {
+          html += '<div class="cf-field-title">' + renderMarkdown(item.label) + '</div>';
+        } else if (item.type === 'number') {
+          const val = CHAR_DATA[item.field] || 1;
+          let maxVal = item.max || 99;
+          if (item.field === 'guardian_unstoppable_die' && level >= 5) maxVal = 6;
+          if (item.field === 'guardian_unstoppable_die' && level < 5) maxVal = 4;
+          html += '<div class="cf-field"><input type="number" name="' + item.field + '" value="' + val + '" min="' + (item.min || 1) + '" max="' + maxVal + '"></div>';
+        } else if (item.type === 'checkbox') {
+          const checked = CHAR_DATA[item.field] ? ' checked' : '';
+          html += '<div class="cf-field cf-chk"><input type="checkbox" name="' + item.field + '"' + checked + '><label>' + renderMarkdown(item.label) + '</label></div>';
+        }
+      });
+      html += '</div></div>';
+    }
+    html += '</div>';
+  }
+  content.innerHTML = html;
+}
+
+function downloadCharacter() {
+  const data = collectFormData();
+  const refs = {};
+  if (data.primary_weapon_ref) refs.primary_weapon_ref = data.primary_weapon_ref;
+  if (data.secondary_weapon_ref) refs.secondary_weapon_ref = data.secondary_weapon_ref;
+  if (data.armor_ref) refs.armor_ref = data.armor_ref;
+  const weaponKeys = ['primary_weapon','primary_trait','primary_range','primary_damage_dice','primary_type','primary_name','primary_feature','secondary_weapon','secondary_trait','secondary_range','secondary_damage_dice','secondary_type','secondary_name','secondary_feature','armor_text','base_threshold_1','base_threshold_2','base_score','feature_name','feature'];
+  const compressed = {};
+  for (const [k, v] of Object.entries(data)) {
+    if (!weaponKeys.includes(k)) compressed[k] = v;
+  }
+  Object.assign(compressed, refs);
+  const cls = data.class_name || 'Unclassed';
+  const name = data.name || 'Unnamed';
+  const blob = new Blob([JSON.stringify(compressed, null, 2)], {type: 'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = cls + ' - ' + name + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+}
+
+function loadCharacter(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const data = JSON.parse(e.target.result);
+    if (data.ancestry === undefined && data.heritage !== undefined) data.ancestry = data.heritage;
+    for (const [key, value] of Object.entries(data)) {
+      const el = document.querySelector(`[name="${key}"]`);
+      if (el) {
+        if (el.type === 'checkbox') {
+          el.checked = value;
+        } else if (el.type === 'number') {
+          el.value = value;
+        } else {
+          el.value = value;
+        }
+      }
+    }
+    document.querySelectorAll('.chk-group[data-parent]').forEach(group => {
+      syncCheckboxGroup(group.dataset.parent, group.dataset.field);
+    });
+    document.querySelectorAll('.chk-group').forEach(group => {
+      const field = group.dataset.field;
+      const arr = data[field];
+      if (Array.isArray(arr)) {
+        arr.forEach((checked, i) => {
+          const cb = group.querySelector(`.chk-boxes input[data-idx="${i}"]`);
+          if (cb) cb.checked = checked;
+        });
+      }
+    });
+    // Sync companion multi-check training fields on load
+    document.querySelectorAll('#companionSection .tier-option[data-field]').forEach(group => {
+      const field = group.dataset.field;
+      const arr = data[field];
+      if (Array.isArray(arr)) {
+        const boxes = group.querySelectorAll('.tier-chks input[type="checkbox"]');
+        boxes.forEach((cb, i) => { if (i < arr.length) cb.checked = arr[i]; });
+      }
+    });
+    // Sync companion damage die radio-like checkboxes
+    const dieVal = data.companion_damage_die || 'd6';
+    document.querySelectorAll('.companion-die-chk').forEach(cb => {
+      cb.checked = cb.dataset.value === dieVal;
+    });
+    // Sync companion stress checkboxes
+    if ('companion_stress' in data) {
+      syncCheckboxGroup('companion_stress', 'companion_marked_stress');
+    }
+    if (data.primary_weapon_ref) {
+      const sel = document.getElementById('primaryWeaponSelect');
+      if (sel) { sel.value = data.primary_weapon_ref; onWeaponSelect('primary'); }
+    }
+    if (data.secondary_weapon_ref) {
+      const sel = document.getElementById('secondaryWeaponSelect');
+      if (sel) { sel.value = data.secondary_weapon_ref; onWeaponSelect('secondary'); }
+    }
+    if (data.armor_ref) {
+      const sel = document.getElementById('armorSelect');
+      if (sel) { sel.value = data.armor_ref; onArmorSelect(); }
+    }
+    syncHopeCheckboxes();
+    document.querySelectorAll('.exp-disable-chk').forEach(syncExpRow);
+    calcGoldTotal();
+    onClassChange();
+    document.getElementById('fileInput').value = '';
+  };
+  reader.readAsText(file);
+}
+
+function selectCharacter(id) {
+  fetch('/api/characters/select', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({id: id})
+  }).then(() => { location.reload(); });
+}
+
+function createCharacter() {
+  const name = prompt('Enter character name:');
+  if (!name || !name.trim()) return;
+  fetch('/api/characters/create', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({name: name.trim()})
+  }).then(() => { location.reload(); });
+}
+
+function deleteCharacter() {
+  if (!confirm('Delete this character and all its data?')) return;
+  const sel = document.getElementById('characterSelect');
+  if (!sel || !sel.value) return;
+  fetch('/api/characters/delete', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({id: sel.value})
+  }).then(() => { location.reload(); });
+}
+
+function saveCharacter() {
+  const btn = document.getElementById('saveBtn');
+  btn.textContent = 'Saving...';
+  btn.disabled = true;
+  const data = collectFormData();
+  fetch('/save', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(data)
+  }).then(r => r.json()).then(() => {
+    btn.textContent = 'Saved!';
+    setTimeout(() => { btn.textContent = 'Save'; btn.disabled = false; }, 2000);
+  }).catch(() => {
+    btn.textContent = 'Error';
+    setTimeout(() => { btn.textContent = 'Save'; btn.disabled = false; }, 2000);
+  });
+}
+
+let itemsData = JSON.parse(JSON.stringify(ALL_ITEMS));
+let editingItemIdx = -1;
+
+function openItemsModal() {
+  renderItemsList();
+  document.getElementById('itemsModal').classList.add('open');
+}
+
+function closeItemsModal() {
+  document.getElementById('itemsModal').classList.remove('open');
+}
+
+function renderItemsList() {
+  const list = document.getElementById('itemsList');
+  let html = '';
+  // Custom items section (first)
+  html += '<div class="details-edit-section"><h3>Custom Items</h3><div class="items-list" id="customItemsList">';
+  if (itemsData.length === 0) {
+    html += '<p style="color:#a0a0b8;text-align:center;padding:20px;">No custom items yet. Click "Add Item" to create one.</p>';
+  } else {
+    itemsData.forEach((item, i) => {
+      const label = item.name || 'Unnamed ' + (item.type || 'item');
+      html += '<div class="item-row"><span>' + item.type.toUpperCase() + ': ' + label + '</span><div class="item-row-actions"><button class="btn-edit" onclick="editItem(' + i + ')">Edit</button><button class="btn-delete" onclick="deleteItem(' + i + ')">Delete</button></div></div>';
+    });
+  }
+  html += '</div></div>';
+  // Reference items section (second)
+  if (DEFAULT_ITEMS.length > 0) {
+    html += '<div class="details-edit-section"><h3>Reference Items <button class="btn-small" onclick="toggleReferenceItems()" id="refItemsToggle">Show all</button></h3><div class="options-list" id="referenceItemsList">';
+    DEFAULT_ITEMS.forEach((item, i) => {
+      const info = item.type === 'weapon'
+        ? (item.trait ? item.trait + ' ' : '') + (item.damage_dice || '') + (item.damage_type ? ' ' + item.damage_type : '') + (item.burden ? ' [' + item.burden + ']' : '')
+        : 'BT ' + (item.base_threshold_1 || '?') + '/' + (item.base_threshold_2 || '?');
+      const style = i >= 5 ? ' style="display:none"' : '';
+      html += '<span class="option-tag read-only"' + style + ' data-ref-idx="' + i + '">' + item.type.toUpperCase() + ': ' + item.name + ' <small style="opacity:0.6">(' + info + ')</small></span>';
+    });
+    html += '</div></div>';
+  }
+  list.innerHTML = html;
+}
+
+let showAllRefItems = false;
+
+function toggleReferenceItems() {
+  showAllRefItems = !showAllRefItems;
+  const items = document.querySelectorAll('#referenceItemsList .option-tag');
+  items.forEach((el, i) => {
+    el.style.display = showAllRefItems ? '' : (i >= 5 ? 'none' : '');
+  });
+  document.getElementById('refItemsToggle').textContent = showAllRefItems ? 'Show less' : 'Show all';
+}
+
+function addNewItem() {
+  editingItemIdx = -1;
+  document.getElementById('itemEditTitle').textContent = 'Add Item';
+  document.getElementById('itemEditType').value = 'weapon';
+  clearItemEditForm();
+  onItemEditTypeChange();
+  populateItemImportSelect();
+  document.getElementById('itemEditModal').classList.add('open');
+}
+
+function editItem(idx) {
+  editingItemIdx = idx;
+  document.getElementById('itemEditTitle').textContent = 'Edit Item';
+  const item = itemsData[idx];
+  document.getElementById('itemEditType').value = item.type || 'weapon';
+  onItemEditTypeChange();
+  if (item.type === 'armor') {
+    document.getElementById('itemEditArmor').value = item.armor || item.name || '';
+    document.getElementById('itemEditBaseTh1').value = item.base_threshold_1 || 0;
+    document.getElementById('itemEditBaseTh2').value = item.base_threshold_2 || 0;
+    document.getElementById('itemEditBaseScore').value = item.base_score || 0;
+    document.getElementById('itemEditArmorName').value = item.name || '';
+    document.getElementById('itemEditArmorFeature').value = item.feature || '';
+  } else {
+    document.getElementById('itemEditWeapon').value = item.weapon || item.name || '';
+    document.getElementById('itemEditTrait').value = item.trait || '';
+    document.getElementById('itemEditRange').value = item.range || '';
+    document.getElementById('itemEditDamageDice').value = item.damage_dice || '';
+    document.getElementById('itemEditDamageType').value = item.damage_type || '';
+    document.getElementById('itemEditBurden').value = item.burden || 'One-Handed';
+    document.getElementById('itemEditName').value = item.name || '';
+    document.getElementById('itemEditFeature').value = item.feature || '';
+  }
+  populateItemImportSelect();
+  document.getElementById('itemEditModal').classList.add('open');
+}
+
+function deleteItem(idx) {
+  if (!confirm('Delete this item?')) return;
+  itemsData.splice(idx, 1);
+  renderItemsList();
+}
+
+function clearItemEditForm() {
+  ['itemEditWeapon','itemEditTrait','itemEditRange','itemEditDamageDice','itemEditDamageType','itemEditName','itemEditFeature','itemEditArmor','itemEditArmorName','itemEditArmorFeature'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('itemEditBurden').value = 'One-Handed';
+  ['itemEditBaseTh1','itemEditBaseTh2','itemEditBaseScore'].forEach(id => document.getElementById(id).value = 0);
+}
+
+function populateItemImportSelect() {
+  const sel = document.getElementById('itemImportSelect');
+  sel.innerHTML = '<option value="">-- Select to import --</option>';
+  COMBINED_ITEMS.forEach((item, i) => {
+    const label = item.type.toUpperCase() + ': ' + (item.name || 'Unnamed');
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = label;
+    sel.appendChild(opt);
+  });
+}
+
+function onImportSelect() {
+  const sel = document.getElementById('itemImportSelect');
+  const idx = parseInt(sel.value, 10);
+  if (isNaN(idx)) return;
+  const item = COMBINED_ITEMS[idx];
+  document.getElementById('itemEditType').value = item.type || 'weapon';
+  onItemEditTypeChange();
+  if (item.type === 'armor') {
+    document.getElementById('itemEditArmor').value = item.name || '';
+    document.getElementById('itemEditBaseTh1').value = item.base_threshold_1 || 0;
+    document.getElementById('itemEditBaseTh2').value = item.base_threshold_2 || 0;
+    document.getElementById('itemEditBaseScore').value = item.base_score || 0;
+    document.getElementById('itemEditArmorName').value = '';
+    document.getElementById('itemEditArmorFeature').value = item.feature || '';
+  } else {
+    document.getElementById('itemEditWeapon').value = item.name || '';
+    document.getElementById('itemEditTrait').value = item.trait || '';
+    document.getElementById('itemEditRange').value = item.range || '';
+    document.getElementById('itemEditDamageDice').value = item.damage_dice || '';
+    document.getElementById('itemEditDamageType').value = item.damage_type || '';
+    document.getElementById('itemEditBurden').value = item.burden || 'One-Handed';
+    document.getElementById('itemEditName').value = '';
+    document.getElementById('itemEditFeature').value = item.feature || '';
+  }
+  sel.value = '';
+}
+
+function onItemEditTypeChange() {
+  const t = document.getElementById('itemEditType').value;
+  document.getElementById('itemEditWeaponFields').style.display = t === 'weapon' ? 'block' : 'none';
+  document.getElementById('itemEditArmorFields').style.display = t === 'armor' ? 'block' : 'none';
+}
+
+function saveItemEdit() {
+  const type = document.getElementById('itemEditType').value;
+  let item;
+  if (type === 'armor') {
+    item = {
+      type: 'armor',
+      armor: document.getElementById('itemEditArmor').value,
+      base_threshold_1: Number(document.getElementById('itemEditBaseTh1').value) || 0,
+      base_threshold_2: Number(document.getElementById('itemEditBaseTh2').value) || 0,
+      base_score: Number(document.getElementById('itemEditBaseScore').value) || 0,
+      name: document.getElementById('itemEditArmorName').value,
+      feature: document.getElementById('itemEditArmorFeature').value
+    };
+  } else {
+    item = {
+      type: 'weapon',
+      weapon: document.getElementById('itemEditWeapon').value,
+      trait: document.getElementById('itemEditTrait').value,
+      range: document.getElementById('itemEditRange').value,
+      damage_dice: document.getElementById('itemEditDamageDice').value,
+      damage_type: document.getElementById('itemEditDamageType').value,
+      burden: document.getElementById('itemEditBurden').value,
+      name: document.getElementById('itemEditName').value,
+      feature: document.getElementById('itemEditFeature').value
+    };
+  }
+  if (editingItemIdx >= 0) {
+    itemsData[editingItemIdx] = item;
+  } else {
+    itemsData.push(item);
+  }
+  closeItemEdit();
+  renderItemsList();
+}
+
+function closeItemEdit() {
+  document.getElementById('itemEditModal').classList.remove('open');
+}
+
+function saveItems(event) {
+  const btn = event.target;
+  btn.textContent = 'Saving...';
+  btn.disabled = true;
+  fetch('/items/save', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(itemsData)
+  }).then(r => r.json()).then(() => {
+    btn.textContent = 'Saved!';
+    setTimeout(() => { btn.textContent = 'Save Items'; btn.disabled = false; }, 2000);
+    ALL_ITEMS.length = 0;
+    ALL_ITEMS.push(...itemsData);
+    // Rebuild combined pool
+    COMBINED_ITEMS.length = 0;
+    COMBINED_ITEMS.push(...ALL_ITEMS, ...DEFAULT_ITEMS);
+    updateItemDropdowns();
+  }).catch(() => {
+    btn.textContent = 'Error';
+    setTimeout(() => { btn.textContent = 'Save Items'; btn.disabled = false; }, 2000);
+  });
+}
+
+function downloadItems() {
+  const blob = new Blob([JSON.stringify(itemsData, null, 2)], {type: 'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'items_data.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+}
+
+function loadItemsFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (Array.isArray(data)) {
+        itemsData = data;
+        renderItemsList();
+      }
+    } catch(e) {}
+    document.getElementById('itemsFileInput').value = '';
+  };
+  reader.readAsText(file);
+}
+
+function updateItemDropdowns() {
+  const primarySel = document.getElementById('primaryWeaponSelect');
+  const secondarySel = document.getElementById('secondaryWeaponSelect');
+  const armorSel = document.getElementById('armorSelect');
+  const weaponOpts = [{value:'', text:'-- Empty --'}];
+  const armorOpts = [{value:'', text:'-- Empty --'}];
+  COMBINED_ITEMS.forEach(item => {
+    const ref = makeItemRef(item);
+    if (item.type === 'armor') {
+      armorOpts.push({value: ref, text: item.name || ''});
+    } else {
+      weaponOpts.push({value: ref, text: item.name || ''});
+    }
+  });
+  [primarySel, secondarySel].forEach(sel => {
+    if (!sel) return;
+    const currentVal = sel.value;
+    sel.innerHTML = weaponOpts.map(o => '<option value="' + o.value.replace(/"/g, '&quot;') + '"' + (o.value === currentVal ? ' selected' : '') + '>' + o.text.replace(/</g, '&lt;') + '</option>').join('');
+  });
+  if (armorSel) {
+    const currentVal = armorSel.value;
+    armorSel.innerHTML = armorOpts.map(o => '<option value="' + o.value.replace(/"/g, '&quot;') + '"' + (o.value === currentVal ? ' selected' : '') + '>' + o.text.replace(/</g, '&lt;') + '</option>').join('');
+  }
+}
+
+let detailsData = {};
+let defaultAncestries = [];
+let customAncestries = [];
+
+function openDetailsModal() {
+  showAllSubclasses = false;
+  showAllHopeFeatures = false;
+  const defaultSet = new Set(DEFAULT_ANCESTRIES);
+  const counts = {};
+  defaultAncestries = [];
+  customAncestries = [];
+  CLASS_DATA.ancestries.forEach(a => {
+    if (defaultSet.has(a)) {
+      counts[a] = (counts[a] || 0) + 1;
+      if (counts[a] === 1) {
+        defaultAncestries.push(a);
+      } else {
+        customAncestries.push(a);
+      }
+    } else {
+      customAncestries.push(a);
+    }
+  });
+  renderDetailsLists();
+  renderDomainsList();
+  renderSubclassesDisplay();
+  renderHopeFeaturesDisplay();
+  document.getElementById('detailsModal').classList.add('open');
+}
+
+function closeDetailsModal() {
+  document.getElementById('detailsModal').classList.remove('open');
+}
+
+function renderDetailsLists() {
+  const ancestriesEl = document.getElementById('ancestriesList');
+  ancestriesEl.innerHTML =
+    defaultAncestries.map(item => '<span class="option-tag">' + item.replace(/</g, '&lt;') + '</span>').join('') +
+    customAncestries.map((item, i) => '<span class="option-tag">' + item.replace(/</g, '&lt;') + '<button onclick="removeAncestryOption(' + i + ')">&times;</button></span>').join('');
+  document.getElementById('communitiesList').innerHTML = CLASS_DATA.communities.map(item => '<span class="option-tag">' + item.replace(/</g, '&lt;') + '</span>').join('');
+  document.getElementById('classesList').innerHTML = CLASS_DATA.classes.map(c => '<span class="option-tag">' + c.replace(/</g, '&lt;') + '</span>').join('');
+}
+
+function renderDomainsList() {
+  document.getElementById('domainsList').innerHTML = CLASS_DATA.domains.map(d => '<span class="option-tag">' + d.replace(/</g, '&lt;') + '</span>').join('');
+}
+
+let showAllSubclasses = false;
+let showAllHopeFeatures = false;
+
+function renderSubclassesDisplay() {
+  const container = document.getElementById('subclassesDisplay');
+  if (!CLASS_DATA.classes || CLASS_DATA.classes.length === 0) {
+    container.innerHTML = '<p style="color:#a0a0b8;">No classes defined.</p>';
+    return;
+  }
+  let html = '';
+  CLASS_DATA.classes.forEach((cls, i) => {
+    const subs = (CLASS_DATA.class_subclasses && CLASS_DATA.class_subclasses[cls]) || [];
+    const style = (!showAllSubclasses && i >= 3) ? ' style="display:none"' : '';
+    html += '<div class="hope-feature-edit"' + style + ' data-class="' + cls.replace(/</g, '&lt;') + '"><label>' + cls.replace(/</g, '&lt;') + '</label><div class="options-list" style="margin:0">' + subs.map(s => '<span class="option-tag">' + s.replace(/</g, '&lt;') + '</span>').join('') + '</div></div>';
+  });
+  container.innerHTML = html;
+  document.getElementById('subclassesToggle').textContent = showAllSubclasses ? 'Show less' : 'Show all';
+}
+
+function toggleSubclasses() {
+  showAllSubclasses = !showAllSubclasses;
+  renderSubclassesDisplay();
+}
+
+function renderHopeFeaturesDisplay() {
+  const container = document.getElementById('hopeFeaturesDisplay');
+  if (!CLASS_DATA.classes || CLASS_DATA.classes.length === 0) {
+    container.innerHTML = '<p style="color:#a0a0b8;">No classes defined.</p>';
+    return;
+  }
+  let html = '';
+  CLASS_DATA.classes.forEach((cls, i) => {
+    const feature = (CLASS_DATA.hope_features && CLASS_DATA.hope_features[cls]) || '';
+    const style = (!showAllHopeFeatures && i >= 3) ? ' style="display:none"' : '';
+    html += '<div class="hope-feature-edit"' + style + '><label>' + cls.replace(/</g, '&lt;') + '</label><div style="padding:6px 10px;background:#0a1a2e;border:1px solid #1a4a7a;color:#c0c0d8;border-radius:4px;font-size:0.9rem;line-height:1.35;">' + renderMarkdown(feature || '<em style="color:#666;">No feature</em>') + '</div></div>';
+  });
+  container.innerHTML = html;
+  document.getElementById('hopeFeaturesToggle').textContent = showAllHopeFeatures ? 'Show less' : 'Show all';
+}
+
+function toggleHopeFeatures() {
+  showAllHopeFeatures = !showAllHopeFeatures;
+  renderHopeFeaturesDisplay();
+}
+function addAncestryOption() {
+  const inp = document.getElementById('newAncestryInput');
+  const val = inp.value.trim();
+  if (!val) return;
+  customAncestries.push(val);
+  inp.value = '';
+  renderDetailsLists();
+}
+
+function removeAncestryOption(idx) { customAncestries.splice(idx, 1); renderDetailsLists(); }
+
+function saveDetails(event) {
+  const btn = event.target;
+  btn.textContent = 'Saving...';
+  btn.disabled = true;
+  const combined = defaultAncestries.concat(customAncestries);
+  fetch('/class-data/save', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ancestries: combined})
+  }).then(r => r.json()).then(() => {
+    btn.textContent = 'Saved!';
+    setTimeout(() => { btn.textContent = 'Save Details'; btn.disabled = false; }, 2000);
+    CLASS_DATA.ancestries = combined;
+    updateClassDropdowns();
+    onClassChange();
+    closeDetailsModal();
+  }).catch(() => {
+    btn.textContent = 'Error';
+    setTimeout(() => { btn.textContent = 'Save Details'; btn.disabled = false; }, 2000);
+  });
+}
+
+function updateClassDropdowns() {
+  const clsSel = document.getElementById('classSelect');
+  const ancSel = document.querySelector('select[name="ancestry"]');
+  const comSel = document.querySelector('select[name="community"]');
+  const currentClass = clsSel.value;
+  const currentAnc = ancSel ? ancSel.value : '';
+  const currentCom = comSel ? comSel.value : '';
+  clsSel.innerHTML = '<option value="">-- Select --</option>' + CLASS_DATA.classes.map(c => '<option value="' + c.replace(/"/g, '&quot;') + '"' + (c === currentClass ? ' selected' : '') + '>' + c.replace(/</g, '&lt;') + '</option>').join('');
+  if (ancSel) ancSel.innerHTML = '<option value="">-- Select --</option>' + CLASS_DATA.ancestries.map(a => '<option value="' + a.replace(/"/g, '&quot;') + '"' + (a === currentAnc ? ' selected' : '') + '>' + a.replace(/</g, '&lt;') + '</option>').join('');
+  if (comSel) comSel.innerHTML = '<option value="">-- Select --</option>' + CLASS_DATA.communities.map(c => '<option value="' + c.replace(/"/g, '&quot;') + '"' + (c === currentCom ? ' selected' : '') + '>' + c.replace(/</g, '&lt;') + '</option>').join('');
+}
+
+// Init weapon/armor fields on page load
+if (document.getElementById('primaryWeaponSelect').value) onWeaponSelect('primary');
+if (document.getElementById('secondaryWeaponSelect').value) onWeaponSelect('secondary');
+if (document.getElementById('armorSelect').value) onArmorSelect();
+</script>
+</body>
+</html>

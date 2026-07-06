@@ -1,0 +1,19 @@
+services:
+  app:
+    # For local development, use: docker compose up --build
+    # For published image (after pushing to a registry), uncomment and set your image:
+    # image: ghcr.io/yourusername/daggerheart-sheet:latest
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      # Persist character data between restarts
+      - ./characters:/app/characters
+      - ./characters_index.json:/app/characters_index.json
+      - ./items_data.json:/app/items_data.json
+      - ./reference_items_data.json:/app/reference_items_data.json
+      - ./class_data.json:/app/class_data.json
+    environment:
+      - FLASK_APP=app.py
+      - FLASK_RUN_HOST=0.0.0.0
+    restart: unless-stopped

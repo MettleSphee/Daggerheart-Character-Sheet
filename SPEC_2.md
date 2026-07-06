@@ -1,0 +1,8 @@
+#Daggerheart Character Sheet Application
+Please take the application already built, and implement the following features:
+- Add a separate menu where weapons can be added, edited or deleted, accessible via a button; The weapons should have the following fields: Weapon, Trait, Range, Damage Dice, Type, Name, Feature; The weapon should also be able to be downloaded, uploaded and saved just like a character sheet.
+- Similarly, add the same features for armors, with the following fields: Armor, Base Threshold 1, Base Threshold 2, Base Score, Name, Feature; To separate Armors from Weapons, add a separate field that chooses whether the item is a Weapon or Armor, in the item editing menu.
+- Following the separate menu, for each of the Primary and Secondary Weapons, add a drop-down menu of the current weapons, with the default option of "empty". Users shall choose a weapon and all of its values shall be imported and/or downloaded from the server to the character sheet. The fields in the character sheet for the weapons shall be changed to be read-only instead; In the character sheet to be downloaded or saved as JSON, the item shall be referenced by a name of the following convention: <type>_<weapon>_<name>;
+- Apply the same from the previous point to Armors;
+- Change the Heritage field to two separate fields: Ancestry and Community, both text fields;
+- Change the Class, Ancestry, Community fields to be drop-down from a list of selectable items; Add an edit menu for these character details; Add a hope feature field which depends on the selected class; Add this text to be displayed under Hope and Scars in the character sheet;

@@ -1,0 +1,10 @@
+__pycache__
+*.pyc
+venv
+.venv
+.DS_Store
+characters/
+character_data.json
+*.log
+stderr.txt
+stdout.txt
