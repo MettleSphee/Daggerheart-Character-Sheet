@@ -1,19 +1,35 @@
 services:
   app:
-    # For local development, use: docker compose up --build
-    # For published image (after pushing to a registry), uncomment and set your image:
-    # image: ghcr.io/yourusername/daggerheart-sheet:latest
-    build: .
+    image: ghcr.io/mettlesphee/daggerheart-character-sheet:latest
     ports:
-      - "5000:5000"
+      - target: 5000
+        published: ${WEBUI_PORT:-5000}
+        protocol: tcp
     volumes:
-      # Persist character data between restarts
-      - ./characters:/app/characters
-      - ./characters_index.json:/app/characters_index.json
-      - ./items_data.json:/app/items_data.json
-      - ./reference_items_data.json:/app/reference_items_data.json
-      - ./class_data.json:/app/class_data.json
+      - /DATA/AppData/daggerheart/characters:/app/characters
+      - /DATA/AppData/daggerheart/characters_index.json:/app/characters_index.json
+      - /DATA/AppData/daggerheart/items_data.json:/app/items_data.json
+      - /DATA/AppData/daggerheart/reference_items_data.json:/app/reference_items_data.json
+      - /DATA/AppData/daggerheart/class_data.json:/app/class_data.json
     environment:
       - FLASK_APP=app.py
       - FLASK_RUN_HOST=0.0.0.0
     restart: unless-stopped
+
+x-casaos:
+  architectures:
+    - amd64
+    - arm64
+  main: app
+  author: MettleSphee
+  category: Games
+  description:
+    en_us: A web-based character sheet manager for Daggerheart tabletop RPG. Manage characters, items, companions, multiclassing, and progression across all tiers of play.
+  developer: MettleSphee
+  icon: https://raw.githubusercontent.com/MettleSphee/Daggerheart-Character-Sheet/main/Daggerheart_logo_2024.png
+  tagline:
+    en_us: Daggerheart character sheet manager
+  title:
+    en_us: Daggerheart Character Sheet
+  index: /
+  port_map: "${WEBUI_PORT:-5000}"
