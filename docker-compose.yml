@@ -3,17 +3,11 @@ services:
     image: ghcr.io/mettlesphee/daggerheart-character-sheet:latest
     ports:
       - target: 5000
-        published: ${WEBUI_PORT:-5000}
+        published: 5000
         protocol: tcp
     volumes:
       - /DATA/AppData/daggerheart/characters:/app/characters
-      - /DATA/AppData/daggerheart/characters_index.json:/app/characters_index.json
-      - /DATA/AppData/daggerheart/items_data.json:/app/items_data.json
-      - /DATA/AppData/daggerheart/reference_items_data.json:/app/reference_items_data.json
-      - /DATA/AppData/daggerheart/class_data.json:/app/class_data.json
-    environment:
-      - FLASK_APP=app.py
-      - FLASK_RUN_HOST=0.0.0.0
+      - /DATA/AppData/daggerheart/:/app/
     restart: unless-stopped
 
 x-casaos:
@@ -32,4 +26,4 @@ x-casaos:
   title:
     en_us: Daggerheart Character Sheet
   index: /
-  port_map: "${WEBUI_PORT:-5000}"
+  port_map: "5000"
