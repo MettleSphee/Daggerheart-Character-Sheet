@@ -600,6 +600,8 @@ function onWeaponSelect(which) {
   }
   // Item field shows base weapon type; Name field stays independent
   document.getElementById(prefix + '_weapon').value = item ? (item.weapon || item.name || '') : '';
+  // Auto-populate Name from item
+  document.getElementById(prefix + '_name').value = item ? (item.name || item.weapon || '') : '';
   // Set burden field
   document.getElementById(prefix + '_burden').value = item ? (item.burden || '') : '';
 }
@@ -620,6 +622,8 @@ function onArmorSelect() {
   }
   // Item field shows base armor type; Name field stays independent
   document.getElementById('armor_text').value = item ? (item.armor || item.name || '') : '';
+  // Auto-populate Name from item
+  document.getElementById('feature_name').value = item ? (item.name || item.armor || '') : '';
 }
 
 function renderMarkdown(text) {
@@ -1043,6 +1047,15 @@ function loadCharacter(event) {
     });
     // Sync companion multi-check training fields on load
     document.querySelectorAll('#companionSection .tier-option[data-field]').forEach(group => {
+      const field = group.dataset.field;
+      const arr = data[field];
+      if (Array.isArray(arr)) {
+        const boxes = group.querySelectorAll('.tier-chks input[type="checkbox"]');
+        boxes.forEach((cb, i) => { if (i < arr.length) cb.checked = arr[i]; });
+      }
+    });
+    // Sync tier section array-style checkboxes on load
+    document.querySelectorAll('.tier-section [data-field]').forEach(group => {
       const field = group.dataset.field;
       const arr = data[field];
       if (Array.isArray(arr)) {
