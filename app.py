@@ -1,15 +1,24 @@
 import json
 import os
 import uuid
+import shutil
 from flask import Flask, render_template, request, jsonify
 
 app = Flask(__name__)
+DATA_DIR = os.environ.get("DATA_DIR", ".")
 DATA_FILE = "character_data.json"
-ITEMS_FILE = "items_data.json"
+ITEMS_FILE = os.path.join(DATA_DIR, "items_data.json")
 REFERENCE_ITEMS_FILE = "reference_items_data.json"
-CLASS_DATA_FILE = "class_data.json"
-CHARACTERS_DIR = "characters"
-CHARACTERS_INDEX = "characters_index.json"
+CLASS_DATA_FILE = os.path.join(DATA_DIR, "class_data.json")
+CHARACTERS_DIR = os.path.join(DATA_DIR, "characters")
+CHARACTERS_INDEX = os.path.join(DATA_DIR, "characters_index.json")
+
+# On first run, seed the data directory with initial class data
+if DATA_DIR != ".":
+    os.makedirs(DATA_DIR, exist_ok=True)
+    seed = os.path.join(DATA_DIR, "class_data.json")
+    if not os.path.exists(seed) and os.path.exists("class_data.json"):
+        shutil.copy2("class_data.json", seed)
 
 DEFAULT_DATA = {
     "class_name": "", "name": "", "pronouns": "", "ancestry": "", "community": "", "subclass": "",
