@@ -6,11 +6,9 @@ services:
         published: 5000
         protocol: tcp
     volumes:
-      - /DATA/AppData/daggerheart/characters:/app/characters
-      - /DATA/AppData/daggerheart/characters_index.json:/app/characters_index.json
-      - /DATA/AppData/daggerheart/items_data.json:/app/items_data.json
-      - /DATA/AppData/daggerheart/reference_items_data.json:/app/reference_items_data.json
-      - /DATA/AppData/daggerheart/class_data.json:/app/class_data.json
+      - /DATA/AppData/daggerheart:/app/data
+    environment:
+      - DATA_DIR=/app/data
     restart: unless-stopped
 
 x-casaos:
